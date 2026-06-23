@@ -1,0 +1,32 @@
+# --- C / C++ build artifacts ---
+build/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.exe
+*.pdb
+
+# --- .NET / C# ---
+bin/
+obj/
+*.user
+*.suo
+.vs/
+artifacts/
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Local secrets / overrides ---
+appsettings.Development.json
+appsettings.Local.json
+*.local.json
+mod_bot_agent.conf

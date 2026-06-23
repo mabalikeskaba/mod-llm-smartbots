@@ -1,0 +1,94 @@
+#
+# mod-bot-agent configuration
+#
+# Copy this file to your worldserver config directory (e.g. etc/modules/),
+# rename it to `mod_bot_agent.conf`, and adjust the values below.
+#
+# The module hosts a small HTTP server INSIDE the worldserver process. It is
+# bound to localhost and protected by a shared token. The C# service calls it
+# for reads/actions and to post acknowledgements; the module calls the C#
+# service for the chat trigger and async action results.
+#
+
+[worldserver]
+
+#
+#    LLMAgent.Enable
+#        Master switch for the whole module.
+#        0 = disabled, 1 = enabled.
+#        Default: 1
+#
+LLMAgent.Enable = 1
+
+#
+#    LLMAgent.Http.BindAddress
+#        Address the module's HTTP server binds to. Keep this on loopback
+#        unless you really know what you are doing — the server runs inside
+#        the worldserver process.
+#        Default: 127.0.0.1
+#
+LLMAgent.Http.BindAddress = "127.0.0.1"
+
+#
+#    LLMAgent.Http.Port
+#        Port the module's HTTP server listens on.
+#        Default: 8810
+#
+LLMAgent.Http.Port = 8810
+
+#
+#    LLMAgent.Http.Token
+#        Shared secret. Every request to the module must carry it as the
+#        `X-Agent-Token` header, and the module sends it to the C# service
+#        too. Set the SAME value in the C# service configuration.
+#        Default: (empty — set a real value)
+#
+LLMAgent.Http.Token = ""
+
+#
+#    LLMAgent.CommandPrefix
+#        Only party/raid chat messages starting with this prefix are forwarded
+#        to the C# service. Everything else is ignored.
+#        Default: !
+#
+LLMAgent.CommandPrefix = "!"
+
+#
+#    LLMAgent.Service.IncomingUrl
+#        URL of the C# service's trigger webhook. The module POSTs forwarded
+#        player messages here.
+#        Default: http://127.0.0.1:8820/incoming
+#
+LLMAgent.Service.IncomingUrl = "http://127.0.0.1:8820/incoming"
+
+#
+#    LLMAgent.Service.CallbackBaseUrl
+#        Base URL of the C# service used for async action results. The module
+#        POSTs to `<CallbackBaseUrl>/action_result` when an action finishes.
+#        Default: http://127.0.0.1:8820
+#
+LLMAgent.Service.CallbackBaseUrl = "http://127.0.0.1:8820"
+
+#
+#    LLMAgent.Buy.ScanRadius
+#        Optional cap (yards) on how far the nearest-vendor lookup will look on
+#        the bot's current map. 0 = no cap (nearest on map wins).
+#        Default: 0
+#
+LLMAgent.Buy.ScanRadius = 0
+
+#
+#    LLMAgent.Buy.TravelTimeoutSeconds
+#        Maximum time the bot may spend travelling to a vendor before the
+#        action fails and the bot's AI is restored.
+#        Default: 120
+#
+LLMAgent.Buy.TravelTimeoutSeconds = 120
+
+#
+#    LLMAgent.Buy.PauseDuringCombat
+#        1 = if the bot enters combat while travelling, let it fight and resume
+#        the trip afterwards. 0 = abort the action on combat.
+#        Default: 1
+#
+LLMAgent.Buy.PauseDuringCombat = 1
