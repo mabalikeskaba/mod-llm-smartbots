@@ -1,0 +1,37 @@
+# Example docker-compose override for running mod-bot-agent alongside an
+# AzerothCore + mod-playerbots Docker stack (same conventions as the AC docker
+# guide: an `ac-network` network and an `ac-worldserver` service).
+#
+# IMPORTANT: the C++ module is compiled INTO the worldserver. This override only
+# adds the C# service container. To get the module itself:
+#   1. clone mod-bot-agent into the AC source `modules/` (next to mod-playerbots),
+#   2. rebuild the worldserver image so the module is compiled in
+#      (e.g. `docker compose build ac-worldserver`),
+#   3. apply data/sql/world/base + data/sql/tools to acore_world,
+#   4. put mod_bot_agent.conf in the worldserver's etc/modules with:
+#        LLMAgent.Http.BindAddress = "0.0.0.0"        # reachable across the network
+#        LLMAgent.Http.Port        = 8810
+#        LLMAgent.Http.Token       = <same as BOT_AGENT_TOKEN below>
+#        LLMAgent.Service.IncomingUrl     = "http://ac-llm-agent-service:8820/incoming"
+#        LLMAgent.Service.CallbackBaseUrl = "http://ac-llm-agent-service:8820"
+#
+# Put BOT_AGENT_TOKEN and ANTHROPIC_API_KEY in your .env file.
+
+services:
+  ac-llm-agent-service:
+    container_name: ac-llm-agent-service
+    build:
+      context: ./modules/mod-bot-agent/service
+    networks:
+      - ac-network
+    environment:
+      - ASPNETCORE_URLS=http://0.0.0.0:8820
+      - Module__BaseUrl=http://ac-worldserver:8810
+      - Module__Token=${BOT_AGENT_TOKEN}
+      - Llm__Provider=anthropic
+      - Llm__Model=claude-haiku-4-5-20251001
+      - Llm__ApiKey=${ANTHROPIC_API_KEY}
+    restart: unless-stopped
+    depends_on:
+      - ac-worldserver
+    profiles: [dev]

@@ -124,6 +124,27 @@ Group up with playerbots, then type a prefixed command in **party/raid** chat:
 The bot acknowledges in party chat. A buy travels to the nearest vendor on the
 bot's map and posts a follow-up acknowledgement when done.
 
+## Docker
+
+The C++ module is compiled **into the worldserver**, so it must be present in the
+AzerothCore source `modules/` before the worldserver image is built — the
+official AC Docker build then compiles it together with mod-playerbots.
+
+1. Clone `mod-bot-agent` into the AC source `modules/` (next to `mod-playerbots`)
+   and rebuild the worldserver image: `docker compose build ac-worldserver`.
+2. Apply the world-DB SQL (table + generator) as in step 2 above.
+3. In `mod_bot_agent.conf` set `LLMAgent.Http.BindAddress = "0.0.0.0"` (so the
+   service container can reach it) and point the service URLs at the service
+   container name (`http://ac-llm-agent-service:8820`).
+4. Add the C# service container — see
+   [`deploy/docker-compose.override.example.yml`](deploy/docker-compose.override.example.yml).
+   It builds `service/Dockerfile` and joins the `ac-network`; pass the shared
+   token and your LLM key via `.env` (`BOT_AGENT_TOKEN`, `ANTHROPIC_API_KEY`).
+5. `docker compose --profile dev up -d ac-llm-agent-service`.
+
+The service reaches the module at `ac-worldserver:8810`; the module calls the
+service at `ac-llm-agent-service:8820`. Both authenticate with the shared token.
+
 ## Verify quickly (without the LLM)
 
 ```bash
