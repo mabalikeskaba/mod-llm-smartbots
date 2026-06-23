@@ -21,10 +21,11 @@ agent's acknowledgement back into the player's party.
         +--------------------------------------------+
 ```
 
-- **`module/`** — AzerothCore C++ module. Hosts a small HTTP server (bound to
-  `127.0.0.1`, token-protected) exposing live reads and actions on the bots'
-  `Player*` objects, marshalled onto the world-update thread. It also hooks party
-  chat: messages with a command prefix (`!…`) are pushed to the C# service.
+- **`src/` (+ `conf/`, `data/`)** — AzerothCore C++ module (laid out the way AC
+  expects: sources under `src/`). Hosts a small HTTP server (bound to `127.0.0.1`,
+  token-protected) exposing live reads and actions on the bots' `Player*` objects,
+  marshalled onto the world-update thread. It also hooks party chat: messages with
+  a command prefix (`!…`) are pushed to the C# service.
 - **`service/`** — .NET 8 ASP.NET Core service. Holds all the LLM logic
   (provider-agnostic, native function-calling), decides which read/action tool to
   invoke, calls the module over HTTP, and asks the module to post a natural-language
@@ -70,17 +71,19 @@ cd ..
 # reconfigure + rebuild AzerothCore (CMake picks up modules/mod-bot-agent/src automatically)
 ```
 
-The module's `CMakeLists.txt` adds the vendored `module/deps/httplib.h` and the
-mod-playerbots headers to the build. If mod-playerbots lives at a non-default
-path, pass `-DMOD_PLAYERBOTS_SRC=/path/to/mod-playerbots/src`.
+No module CMake is needed: AzerothCore auto-collects `modules/mod-bot-agent/src`
+(including the vendored `src/deps/httplib.h`) and the mod-playerbots headers
+(it is a sibling module), and compiles everything statically into the
+worldserver binary. Verified to compile against the AC Playerbot branch +
+mod-playerbots via the official AC Docker build.
 
 ### 2. Create and populate the vendor index (world DB)
 
 ```bash
 # create the table
-mysql -uroot -p<pw> acore_world < modules/mod-bot-agent/module/data/sql/world/base/bot_agent_item_vendors.sql
+mysql -uroot -p<pw> acore_world < modules/mod-bot-agent/data/sql/world/base/bot_agent_item_vendors.sql
 # (re)build it from npc_vendor + creature — rerun after any world DB update
-mysql -uroot -p<pw> acore_world < modules/mod-bot-agent/module/data/sql/tools/build_item_vendor_index.sql
+mysql -uroot -p<pw> acore_world < modules/mod-bot-agent/data/sql/tools/build_item_vendor_index.sql
 ```
 
 > If your core stores spawns in a single `creature.id` column (not `id1/id2/id3`),
@@ -88,7 +91,7 @@ mysql -uroot -p<pw> acore_world < modules/mod-bot-agent/module/data/sql/tools/bu
 
 ### 3. Configure the module
 
-Copy `module/conf/mod_bot_agent.conf.dist` to your worldserver config dir as
+Copy `conf/mod_bot_agent.conf.dist` to your worldserver config dir as
 `mod_bot_agent.conf` and set at least:
 
 - `LLMAgent.Http.Token` — a shared secret (must match the service).

@@ -8,6 +8,7 @@
 #include "Creature.h"
 #include "DatabaseEnv.h"
 #include "Field.h"
+#include "QueryResult.h"
 #include "Item.h"
 #include "ItemTemplate.h"
 #include "Log.h"

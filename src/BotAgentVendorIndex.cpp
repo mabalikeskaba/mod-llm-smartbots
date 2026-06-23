@@ -2,6 +2,7 @@
 
 #include "DatabaseEnv.h"
 #include "Field.h"
+#include "QueryResult.h"
 
 #include <cmath>
 
