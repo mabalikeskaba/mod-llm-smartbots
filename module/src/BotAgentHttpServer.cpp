@@ -1,11 +1,28 @@
 #include "BotAgentHttpServer.h"
 #include "BotAgentConfig.h"
+#include "BotAgentJson.h"
+#include "BotAgentReads.h"
+#include "BotAgentTaskQueue.h"
 #include "Log.h"
 
 // Single-header HTTP library (vendored under module/deps).
 #include "httplib.h"
 
+#include <cstdint>
 #include <string>
+
+namespace
+{
+    // Reads marshal onto the world thread; they finish in well under this.
+    constexpr uint32 READ_TIMEOUT_MS = 3000;
+
+    // Parses a low-GUID captured from the route regex; 0 on failure.
+    uint32 ParseGuid(std::string const& s)
+    {
+        try { return static_cast<uint32>(std::stoul(s)); }
+        catch (...) { return 0; }
+    }
+}
 
 namespace
 {
@@ -91,8 +108,33 @@ void BotAgentHttpServer::RegisterRoutes()
         res.set_content(R"({"status":"ok"})", "application/json");
     });
 
-    // Read and action routes are registered by later units (reads, buy-action).
-    // They use RequireToken() and BotAgentTaskQueue::RunSync() to marshal onto
-    // the world thread.
-    (void)&RequireToken;
+    // --- live reads -------------------------------------------------------
+    // GET /bot/<guid>/gold | /level | /inventory
+    auto readRoute = [](std::string (*fn)(uint32))
+    {
+        return [fn](httplib::Request const& req, httplib::Response& res)
+        {
+            if (!RequireToken(req, res))
+                return;
+
+            uint32 guid = ParseGuid(req.matches[1].str());
+            if (!guid)
+            {
+                res.status = 400;
+                res.set_content(BotAgentJson::Error("invalid_guid"), "application/json");
+                return;
+            }
+
+            std::string body = BotAgentTaskQueue::RunSync(
+                [guid, fn]() { return fn(guid); }, READ_TIMEOUT_MS);
+            res.set_content(body, "application/json");
+        };
+    };
+
+    _server->Get(R"(/bot/(\d+)/gold)",      readRoute(&BotAgentReads::Gold));
+    _server->Get(R"(/bot/(\d+)/level)",     readRoute(&BotAgentReads::Level));
+    _server->Get(R"(/bot/(\d+)/inventory)", readRoute(&BotAgentReads::Inventory));
+
+    // Action routes (POST /bot/<guid>/buy, POST /chat) are registered by the
+    // buy-action / chat units.
 }

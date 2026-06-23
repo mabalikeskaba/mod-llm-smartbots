@@ -1,0 +1,5 @@
+# Normalise line endings: store text as LF in the repo.
+* text=auto eol=lf
+
+# Vendored third-party header — leave as-is, treat as text.
+module/deps/httplib.h text eol=lf linguist-vendored
