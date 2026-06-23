@@ -2,6 +2,7 @@ using System.Text.Json;
 using BotAgent.Service;
 using BotAgent.Service.Llm;
 using BotAgent.Service.Models;
+using BotAgent.Service.Tools;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,13 +18,17 @@ builder.Services.Configure<LlmOptions>(builder.Configuration.GetSection("Llm"));
 builder.Services.Configure<ModuleClientOptions>(builder.Configuration.GetSection("Module"));
 
 // Typed HttpClient to the C++ module (base address + shared token).
-builder.Services.AddHttpClient<ModuleClient>((sp, http) =>
+builder.Services.AddHttpClient<IModuleClient, ModuleClient>((sp, http) =>
 {
     ModuleClientOptions o = sp.GetRequiredService<IOptions<ModuleClientOptions>>().Value;
     http.BaseAddress = new Uri(o.BaseUrl);
     if (!string.IsNullOrEmpty(o.Token))
         http.DefaultRequestHeaders.Add("X-Agent-Token", o.Token);
 });
+
+builder.Services.AddSingleton<ToolCatalog>();
+builder.Services.AddScoped<ToolDispatcher>();
+builder.Services.AddScoped<AgentOrchestrator>();
 
 // Default factory for the LLM providers' outbound calls.
 builder.Services.AddHttpClient();
@@ -44,13 +49,28 @@ WebApplication app = builder.Build();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
-// Trigger webhook. The orchestrator is wired in a later unit; for now we accept
-// and log so the module<->service round-trip can be exercised end to end.
-app.MapPost("/incoming", (IncomingRequest req, ILogger<Program> log) =>
+// Trigger webhook. Accept immediately and run the (possibly multi-second) LLM
+// tool-calling loop in the background so the module's sender thread is not held.
+app.MapPost("/incoming", (IncomingRequest req, IServiceScopeFactory scopeFactory, ILogger<Program> log) =>
 {
     log.LogInformation(
         "[/incoming] {Player} (group {Group}) said: {Message} - roster of {Count}",
         req.Player, req.GroupGuid, req.Message, req.Roster.Count);
+
+    _ = Task.Run(async () =>
+    {
+        using IServiceScope scope = scopeFactory.CreateScope();
+        AgentOrchestrator orchestrator = scope.ServiceProvider.GetRequiredService<AgentOrchestrator>();
+        try
+        {
+            await orchestrator.HandleAsync(req, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "orchestration failed for {Player}", req.Player);
+        }
+    });
+
     return Results.Accepted();
 });
 

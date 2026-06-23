@@ -11,11 +11,22 @@ public sealed class ModuleClientOptions
     public string Token { get; set; } = "";
 }
 
+// Talks to the C++ module. Abstracted so the orchestrator/dispatcher can be
+// unit-tested without a live server.
+public interface IModuleClient
+{
+    Task<string> GetGoldAsync(uint guid, CancellationToken ct);
+    Task<string> GetLevelAsync(uint guid, CancellationToken ct);
+    Task<string> GetInventoryAsync(uint guid, CancellationToken ct);
+    Task<string> BuyAsync(uint guid, string jsonBody, CancellationToken ct);
+    Task<string> SendChatAsync(string groupGuid, string text, CancellationToken ct);
+}
+
 // Typed HttpClient talking to the C++ module. The base address and the
 // X-Agent-Token header are configured on the injected HttpClient (see
 // Program.cs). Read/buy bodies are returned verbatim — error JSON from the
 // module is meaningful to the LLM and is passed through as a tool result.
-public sealed class ModuleClient
+public sealed class ModuleClient : IModuleClient
 {
     private readonly HttpClient _http;
 
