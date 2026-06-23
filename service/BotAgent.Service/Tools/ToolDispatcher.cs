@@ -11,8 +11,13 @@ namespace BotAgent.Service.Tools;
 public sealed class ToolDispatcher
 {
     private readonly IModuleClient _module;
+    private readonly PendingActions _pending;
 
-    public ToolDispatcher(IModuleClient module) => _module = module;
+    public ToolDispatcher(IModuleClient module, PendingActions pending)
+    {
+        _module = module;
+        _pending = pending;
+    }
 
     public async Task<string> DispatchAsync(ToolCallRequest call, IncomingRequest req, CancellationToken ct)
     {
@@ -46,11 +51,42 @@ public sealed class ToolDispatcher
                     r.ValueKind == JsonValueKind.Number && r.TryGetInt32(out int radius))
                     body["radius"] = radius;
 
-                return await _module.BuyAsync(bot.Guid, body.ToJsonString(), ct);
+                string buyResult = await _module.BuyAsync(bot.Guid, body.ToJsonString(), ct);
+                RegisterPendingIfAccepted(buyResult, req, bot.Name, item!);
+                return buyResult;
             }
 
             default:
                 return Err($"unknown tool '{call.Name}'");
+        }
+    }
+
+    // If the module accepted the async buy (accepted=true + request_id), remember
+    // the context so the /action_result callback can produce the completion ack.
+    private void RegisterPendingIfAccepted(string buyResult, IncomingRequest req, string botName, string itemName)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(buyResult);
+            JsonElement root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return;
+
+            bool accepted = root.TryGetProperty("accepted", out JsonElement a) &&
+                            a.ValueKind == JsonValueKind.True;
+            if (!accepted)
+                return;
+
+            if (root.TryGetProperty("request_id", out JsonElement idEl) &&
+                idEl.ValueKind == JsonValueKind.String &&
+                idEl.GetString() is { Length: > 0 } id)
+            {
+                _pending.Register(new PendingAction(id, req.GroupGuid, req.Player, botName, itemName));
+            }
+        }
+        catch (JsonException)
+        {
+            // Non-JSON / error body — nothing to correlate.
         }
     }
 

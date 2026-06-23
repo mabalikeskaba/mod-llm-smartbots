@@ -68,6 +68,35 @@ public sealed class AgentOrchestrator
         await _module.SendChatAsync(req.GroupGuid, finalText!.Trim(), ct);
     }
 
+    // Phrases and posts the completion acknowledgement for a finished async
+    // action (e.g. a vendor run reported via /action_result). No tools — one
+    // natural-language sentence from the companion's point of view.
+    public async Task CompleteActionAsync(ActionResult result, PendingAction ctx, CancellationToken ct)
+    {
+        string system =
+            $"You are {ctx.BotName}, a companion of {ctx.Player} in World of Warcraft. " +
+            "Reply with ONE short, natural, in-character sentence acknowledging the result of a " +
+            "shopping errand. No markdown, no quotes.";
+
+        var sb = new StringBuilder();
+        sb.Append(result.Success ? "The purchase succeeded. " : "The purchase failed. ");
+        sb.Append($"Requested item: {ctx.ItemName}. ");
+        if (!string.IsNullOrEmpty(result.Item)) sb.Append($"Bought: {result.Item}. ");
+        if (result.Price is > 0) sb.Append($"Price: {Money.Format(result.Price.Value)}. ");
+        if (!string.IsNullOrEmpty(result.Vendor)) sb.Append($"Vendor: {result.Vendor}. ");
+        if (!string.IsNullOrEmpty(result.Message)) sb.Append($"Detail: {result.Message}. ");
+        sb.Append($"Tell {ctx.Player} the outcome.");
+
+        var messages = new List<LlmMessage> { LlmMessage.FromUser(sb.ToString()) };
+        LlmTurn turn = await _llm.NextAsync(system, messages, Array.Empty<ToolDefinition>(), _opt.MaxTokens, ct);
+
+        string? text = turn.Text?.Trim();
+        if (!string.IsNullOrWhiteSpace(text))
+            await _module.SendChatAsync(ctx.GroupGuid, text!, ct);
+        else
+            _log.LogWarning("no completion ack text for request {Id}", result.RequestId);
+    }
+
     private static string BuildSystemPrompt(IncomingRequest req)
     {
         var sb = new StringBuilder();

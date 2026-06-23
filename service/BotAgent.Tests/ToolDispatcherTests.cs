@@ -1,3 +1,4 @@
+using BotAgent.Service;
 using BotAgent.Service.Models;
 using BotAgent.Service.Tools;
 using Xunit;
@@ -10,7 +11,7 @@ public class ToolDispatcherTests
     public async Task Get_gold_resolves_name_to_guid_and_returns_module_body()
     {
         var module = new FakeModuleClient { GoldResult = "{\"copper\":15500}" };
-        var dispatcher = new ToolDispatcher(module);
+        var dispatcher = new ToolDispatcher(module, new PendingActions());
         IncomingRequest req = Build.Request(Build.Member("Thrall", 42));
 
         string result = await dispatcher.DispatchAsync(
@@ -24,7 +25,7 @@ public class ToolDispatcherTests
     public async Task Name_match_is_case_insensitive()
     {
         var module = new FakeModuleClient();
-        var dispatcher = new ToolDispatcher(module);
+        var dispatcher = new ToolDispatcher(module, new PendingActions());
         IncomingRequest req = Build.Request(Build.Member("Thrall", 42));
 
         await dispatcher.DispatchAsync(
@@ -36,7 +37,7 @@ public class ToolDispatcherTests
     [Fact]
     public async Task Unknown_bot_returns_error()
     {
-        var dispatcher = new ToolDispatcher(new FakeModuleClient());
+        var dispatcher = new ToolDispatcher(new FakeModuleClient(), new PendingActions());
         IncomingRequest req = Build.Request(Build.Member("Thrall", 42));
 
         string result = await dispatcher.DispatchAsync(
@@ -49,7 +50,7 @@ public class ToolDispatcherTests
     public async Task Buy_passes_item_name_and_radius_to_module()
     {
         var module = new FakeModuleClient();
-        var dispatcher = new ToolDispatcher(module);
+        var dispatcher = new ToolDispatcher(module, new PendingActions());
         IncomingRequest req = Build.Request(Build.Member("Thrall", 42));
 
         await dispatcher.DispatchAsync(
@@ -66,7 +67,7 @@ public class ToolDispatcherTests
     public async Task Buy_without_item_name_returns_error()
     {
         var module = new FakeModuleClient();
-        var dispatcher = new ToolDispatcher(module);
+        var dispatcher = new ToolDispatcher(module, new PendingActions());
         IncomingRequest req = Build.Request(Build.Member("Thrall", 42));
 
         string result = await dispatcher.DispatchAsync(

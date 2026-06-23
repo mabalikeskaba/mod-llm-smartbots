@@ -11,7 +11,7 @@ namespace BotAgent.Tests;
 public class OrchestratorTests
 {
     private static AgentOrchestrator Make(ILlmProvider llm, FakeModuleClient module) =>
-        new(llm, new ToolDispatcher(module), new ToolCatalog(), module,
+        new(llm, new ToolDispatcher(module, new PendingActions()), new ToolCatalog(), module,
             Options.Create(new LlmOptions()), NullLogger<AgentOrchestrator>.Instance);
 
     [Fact]

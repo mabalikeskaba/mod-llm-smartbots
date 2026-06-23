@@ -27,6 +27,7 @@ builder.Services.AddHttpClient<IModuleClient, ModuleClient>((sp, http) =>
 });
 
 builder.Services.AddSingleton<ToolCatalog>();
+builder.Services.AddSingleton<PendingActions>();
 builder.Services.AddScoped<ToolDispatcher>();
 builder.Services.AddScoped<AgentOrchestrator>();
 
@@ -72,6 +73,33 @@ app.MapPost("/incoming", (IncomingRequest req, IServiceScopeFactory scopeFactory
     });
 
     return Results.Accepted();
+});
+
+// Async action result from the module. Correlate to the original command and
+// post the completion acknowledgement; run the LLM phrasing in the background.
+app.MapPost("/action_result", (ActionResult res, PendingActions pending, IServiceScopeFactory scopeFactory, ILogger<Program> log) =>
+{
+    if (!pending.TryTake(res.RequestId, out PendingAction ctx))
+    {
+        log.LogWarning("[/action_result] unknown request_id {Id}", res.RequestId);
+        return Results.Ok();
+    }
+
+    _ = Task.Run(async () =>
+    {
+        using IServiceScope scope = scopeFactory.CreateScope();
+        AgentOrchestrator orchestrator = scope.ServiceProvider.GetRequiredService<AgentOrchestrator>();
+        try
+        {
+            await orchestrator.CompleteActionAsync(res, ctx, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "action-result ack failed for request {Id}", res.RequestId);
+        }
+    });
+
+    return Results.Ok();
 });
 
 app.Run();
