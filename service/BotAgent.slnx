@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="BotAgent.Service/BotAgent.Service.csproj" />
+  <Project Path="BotAgent.Tests/BotAgent.Tests.csproj" />
+</Solution>
