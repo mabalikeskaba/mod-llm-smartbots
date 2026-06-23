@@ -1,0 +1,98 @@
+#include "BotAgentHttpServer.h"
+#include "BotAgentConfig.h"
+#include "Log.h"
+
+// Single-header HTTP library (vendored under module/deps).
+#include "httplib.h"
+
+#include <string>
+
+namespace
+{
+    // Returns true if the request is authorised. When a token is configured,
+    // the request must carry it in the X-Agent-Token header.
+    bool RequireToken(httplib::Request const& req, httplib::Response& res)
+    {
+        std::string const& token = BotAgentConfig::Instance().Token;
+        if (token.empty())
+            return true; // unauthenticated mode (a startup warning was logged)
+
+        if (req.get_header_value("X-Agent-Token") == token)
+            return true;
+
+        res.status = 401;
+        res.set_content(R"({"error":"unauthorized"})", "application/json");
+        return false;
+    }
+}
+
+BotAgentHttpServer& BotAgentHttpServer::Instance()
+{
+    static BotAgentHttpServer instance;
+    return instance;
+}
+
+BotAgentHttpServer::~BotAgentHttpServer()
+{
+    Stop();
+}
+
+void BotAgentHttpServer::Start()
+{
+    if (_running.exchange(true))
+        return; // already started
+
+    _server = std::make_unique<httplib::Server>();
+    RegisterRoutes();
+
+    BotAgentConfig const& cfg = BotAgentConfig::Instance();
+    std::string host = cfg.BindAddress;
+    uint16 port = cfg.Port;
+
+    // Bind synchronously so we can report a bind failure immediately.
+    if (!_server->bind_to_port(host.c_str(), port))
+    {
+        LOG_ERROR("module.bot_agent",
+            "[bot-agent] failed to bind HTTP server to {}:{}", host, port);
+        _running = false;
+        _server.reset();
+        return;
+    }
+
+    LOG_INFO("module.bot_agent", "[bot-agent] HTTP server listening on {}:{}", host, port);
+
+    _thread = std::thread([this]()
+    {
+        // Blocks until stop() is called from another thread.
+        _server->listen_after_bind();
+    });
+}
+
+void BotAgentHttpServer::Stop()
+{
+    if (!_running.exchange(false))
+        return;
+
+    if (_server)
+        _server->stop();
+
+    if (_thread.joinable())
+        _thread.join();
+
+    _server.reset();
+    LOG_INFO("module.bot_agent", "[bot-agent] HTTP server stopped");
+}
+
+void BotAgentHttpServer::RegisterRoutes()
+{
+    // Liveness probe — intentionally unauthenticated.
+    _server->Get("/health", [](httplib::Request const&, httplib::Response& res)
+    {
+        res.set_content(R"({"status":"ok"})", "application/json");
+    });
+
+    // Read and action routes are registered by later units (reads, buy-action).
+    // They use RequireToken() and BotAgentTaskQueue::RunSync() to marshal onto
+    // the world thread.
+    (void)&RequireToken;
+}
