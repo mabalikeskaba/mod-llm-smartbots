@@ -92,13 +92,13 @@ void BotAgentChatHook::OnPlayerBeforeSendChatMessage(
     }
     roster += ']';
 
-    // group_guid is the full raw GUID as a string (it can exceed 2^53, so it is
-    // not safe to send as a JSON number); the C# service echoes it back and the
-    // module resolves it to send the acknowledgement into this party.
+    // group_guid is the group's low id as a string; the C# service echoes it
+    // back and the module resolves it via GroupMgr::GetGroupByGUID(low id) to
+    // send the acknowledgement into this party.
     std::string body = "{";
     body += "\"player\":\"" + BotAgentJson::Escape(player->GetName()) + "\",";
     body += "\"player_guid\":" + std::to_string(speakerGuid.GetCounter()) + ",";
-    body += "\"group_guid\":\"" + std::to_string(group->GetGUID().GetRawValue()) + "\",";
+    body += "\"group_guid\":\"" + std::to_string(group->GetGUID().GetCounter()) + "\",";
     body += "\"message\":\"" + BotAgentJson::Escape(command) + "\",";
     body += "\"roster\":" + roster;
     body += "}";

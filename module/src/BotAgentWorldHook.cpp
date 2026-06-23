@@ -1,4 +1,5 @@
 #include "BotAgentWorldHook.h"
+#include "BotAgentBuyAction.h"
 #include "BotAgentConfig.h"
 #include "BotAgentHttpClient.h"
 #include "BotAgentHttpServer.h"
@@ -49,10 +50,11 @@ void BotAgentWorldScript::OnAfterConfigLoad(bool reload)
     }
 }
 
-void BotAgentWorldScript::OnUpdate(uint32 /*diff*/)
+void BotAgentWorldScript::OnUpdate(uint32 diff)
 {
     // Run everything the HTTP threads queued for the world thread.
     BotAgentTaskQueue::Instance().DrainOnWorldThread();
 
-    // (Active buy-actions are ticked here once that unit lands.)
+    // Advance in-flight async actions (vendor runs).
+    BotAgentBuyAction::Tick(diff);
 }
