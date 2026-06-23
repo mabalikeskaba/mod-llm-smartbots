@@ -53,12 +53,87 @@ Player (party):  "!Thrall buy me a healing potion"
 ## Requirements
 
 - AzerothCore (WotLK 3.3.5a) with **mod-playerbots** — the module links against
-  mod-playerbots' `PlayerbotAI`/travel API for the buy-action movement.
-- .NET 8 SDK for the service.
+  mod-playerbots' `PlayerbotAI` API to control the bot during the buy action.
+- .NET 8 SDK/runtime for the service.
 - An LLM provider key (Anthropic or OpenAI) for the service.
 
-> Setup, build, and configuration details are documented as the implementation lands
-> (see `module/conf/mod_bot_agent.conf.dist` and `service/appsettings.json`).
+## Setup
+
+### 1. Build the C++ module
+
+```bash
+# from your AzerothCore source root
+cd modules
+git clone <this-repo> mod-bot-agent
+# mod-playerbots must also be present under modules/ (the module includes its headers)
+cd ..
+# reconfigure + rebuild AzerothCore (CMake picks up modules/mod-bot-agent/src automatically)
+```
+
+The module's `CMakeLists.txt` adds the vendored `module/deps/httplib.h` and the
+mod-playerbots headers to the build. If mod-playerbots lives at a non-default
+path, pass `-DMOD_PLAYERBOTS_SRC=/path/to/mod-playerbots/src`.
+
+### 2. Create and populate the vendor index (world DB)
+
+```bash
+# create the table
+mysql -uroot -p<pw> acore_world < modules/mod-bot-agent/module/data/sql/world/base/bot_agent_item_vendors.sql
+# (re)build it from npc_vendor + creature — rerun after any world DB update
+mysql -uroot -p<pw> acore_world < modules/mod-bot-agent/module/data/sql/tools/build_item_vendor_index.sql
+```
+
+> If your core stores spawns in a single `creature.id` column (not `id1/id2/id3`),
+> edit the join in `build_item_vendor_index.sql` as noted in its header.
+
+### 3. Configure the module
+
+Copy `module/conf/mod_bot_agent.conf.dist` to your worldserver config dir as
+`mod_bot_agent.conf` and set at least:
+
+- `LLMAgent.Http.Token` — a shared secret (must match the service).
+- `LLMAgent.Http.Port` (default `8810`) and `LLMAgent.Service.IncomingUrl` /
+  `LLMAgent.Service.CallbackBaseUrl` pointing at the C# service (default `8820`).
+
+Start (or restart) worldserver. The bridge logs `HTTP server listening on …`.
+
+### 4. Configure and run the C# service
+
+Edit `service/BotAgent.Service/appsettings.json` (or use environment variables /
+`appsettings.Local.json`, which is git-ignored):
+
+- `Module.BaseUrl` = `http://127.0.0.1:8810`, `Module.Token` = the SAME token.
+- `Llm.Provider` (`anthropic` | `openai`), `Llm.Model`, `Llm.ApiKey`.
+- `Urls` = `http://127.0.0.1:8820` (matches the module's IncomingUrl/CallbackBaseUrl).
+
+```bash
+cd service
+dotnet run --project BotAgent.Service        # listens on :8820
+dotnet test                                  # run the unit tests
+```
+
+### 5. Use it in game
+
+Group up with playerbots, then type a prefixed command in **party/raid** chat:
+
+```
+!Thrall how much gold do you have?
+!Thrall buy me a healing potion
+```
+
+The bot acknowledges in party chat. A buy travels to the nearest vendor on the
+bot's map and posts a follow-up acknowledgement when done.
+
+## Verify quickly (without the LLM)
+
+```bash
+# reads (replace 42 with a bot's low GUID; send the token)
+curl -H "X-Agent-Token: <token>" http://127.0.0.1:8810/bot/42/gold
+curl -H "X-Agent-Token: <token>" http://127.0.0.1:8810/bot/42/inventory
+# start a buy
+curl -H "X-Agent-Token: <token>" -H "Content-Type: application/json" \
+     -d '{"item_name":"Healing Potion"}' http://127.0.0.1:8810/bot/42/buy
+```
 
 ## License
 
