@@ -14,7 +14,7 @@ void BotAgentConfig::Load()
     BindAddress      = sConfigMgr->GetOption<std::string>("LLMAgent.Http.BindAddress", "127.0.0.1");
     Port             = static_cast<uint16>(sConfigMgr->GetOption<uint32>("LLMAgent.Http.Port", 8810));
     Token            = sConfigMgr->GetOption<std::string>("LLMAgent.Http.Token", "");
-    CommandPrefix    = sConfigMgr->GetOption<std::string>("LLMAgent.CommandPrefix", "!");
+    CommandPrefix    = sConfigMgr->GetOption<std::string>("LLMAgent.CommandPrefix", "#");
     IncomingUrl      = sConfigMgr->GetOption<std::string>("LLMAgent.Service.IncomingUrl", "http://127.0.0.1:8820/incoming");
     CallbackBaseUrl  = sConfigMgr->GetOption<std::string>("LLMAgent.Service.CallbackBaseUrl", "http://127.0.0.1:8820");
     BuyScanRadius    = sConfigMgr->GetOption<uint32>("LLMAgent.Buy.ScanRadius", 0);

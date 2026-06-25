@@ -17,7 +17,7 @@ public:
     std::string BindAddress      = "127.0.0.1";
     uint16      Port             = 8810;
     std::string Token;
-    std::string CommandPrefix    = "!";
+    std::string CommandPrefix    = "#";
     std::string IncomingUrl      = "http://127.0.0.1:8820/incoming";
     std::string CallbackBaseUrl  = "http://127.0.0.1:8820";
     uint32      BuyScanRadius    = 0;

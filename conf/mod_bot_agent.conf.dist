@@ -49,9 +49,11 @@ LLMAgent.Http.Token = ""
 #    LLMAgent.CommandPrefix
 #        Only party/raid chat messages starting with this prefix are forwarded
 #        to the C# service. Everything else is ignored.
-#        Default: !
+#        NOTE: avoid "!" — AzerothCore intercepts it as a command before the
+#        message reaches party chat, so the module never sees it.
+#        Default: #
 #
-LLMAgent.CommandPrefix = "!"
+LLMAgent.CommandPrefix = "#"
 
 #
 #    LLMAgent.Service.IncomingUrl
