@@ -3,6 +3,7 @@
 #include "BotAgentConfig.h"
 #include "BotAgentHttpClient.h"
 #include "BotAgentHttpServer.h"
+#include "BotAgentMoveAction.h"
 #include "BotAgentRepairAction.h"
 #include "BotAgentSellAction.h"
 #include "BotAgentTaskQueue.h"
@@ -63,4 +64,5 @@ void BotAgentWorldScript::OnUpdate(uint32 diff)
     BotAgentSellAction::Tick(diff);
     BotAgentTradeAction::Tick(diff);
     BotAgentRepairAction::Tick(diff);
+    BotAgentMoveAction::Tick(diff);
 }

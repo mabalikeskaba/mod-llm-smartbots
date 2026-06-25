@@ -46,6 +46,11 @@ public sealed class ToolCatalog
                 "and carried gear. Returns immediately; completes asynchronously with a " +
                 "follow-up acknowledgement that includes the repair cost.",
                 BotOnlySchema),
+            Define("move_companion",
+                "Control a companion's movement relative to the player: 'come' walks the " +
+                "companion to the player once, 'follow' makes it follow the player around, " +
+                "'stay' makes it hold its current position. Takes effect immediately.",
+                MoveSchema),
         };
     }
 
@@ -99,6 +104,21 @@ public sealed class ToolCatalog
         }
       },
       "required": ["bot_name", "item_names"]
+    }
+    """;
+
+    private const string MoveSchema = """
+    {
+      "type": "object",
+      "properties": {
+        "bot_name": { "type": "string", "description": "Name of the companion (from the roster)." },
+        "action": {
+          "type": "string",
+          "enum": ["come", "follow", "stay"],
+          "description": "come = walk to the player once; follow = follow the player; stay = hold position."
+        }
+      },
+      "required": ["bot_name", "action"]
     }
     """;
 

@@ -137,7 +137,8 @@ public sealed class AgentOrchestrator
         sb.Append("Use the provided tools to read live bot data (gold, level, inventory) ");
         sb.Append("and to perform actions: buying an item from a vendor, selling items at a ");
         sb.Append("vendor to free bag space, giving carried items to the player via trade, ");
-        sb.Append("and repairing the companion's gear at a repair NPC. ");
+        sb.Append("repairing the companion's gear at a repair NPC, and moving the companion ");
+        sb.Append("(come to the player, follow, or stay). ");
         sb.Append("To free bag space, call get_inventory first, decide which items are no longer ");
         sb.Append("needed, then sell them. To hand items to the player, use give_items_to_player. ");
         sb.Append("Only act on the companion the player refers to; pick names from the roster. ");

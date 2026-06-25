@@ -3,6 +3,7 @@
 #include "BotAgentChat.h"
 #include "BotAgentConfig.h"
 #include "BotAgentJson.h"
+#include "BotAgentMoveAction.h"
 #include "BotAgentReads.h"
 #include "BotAgentRepairAction.h"
 #include "BotAgentSellAction.h"
@@ -250,6 +251,42 @@ void BotAgentHttpServer::RegisterRoutes()
 
         std::string body = BotAgentTaskQueue::RunSync(
             [guid, playerGuid, items]() { return BotAgentTradeAction::Start(guid, playerGuid, items); },
+            BUY_START_TIMEOUT_MS);
+        res.set_content(body, "application/json");
+    });
+
+    // POST /bot/<guid>/move  { "command": "come|follow|stay", "player_guid": <int> }
+    _server->Post(R"(/bot/(\d+)/move)", [](httplib::Request const& req, httplib::Response& res)
+    {
+        if (!RequireToken(req, res))
+            return;
+
+        uint32 guid = ParseGuid(req.matches[1].str());
+        if (!guid)
+        {
+            res.status = 400;
+            res.set_content(BotAgentJson::Error("invalid_guid"), "application/json");
+            return;
+        }
+
+        std::string command;
+        BotAgentJson::GetString(req.body, "command", command);
+        uint32 playerGuid = BotAgentJson::GetUInt(req.body, "player_guid", 0);
+        if (command.empty() || !playerGuid)
+        {
+            res.status = 400;
+            res.set_content(BotAgentJson::Error("missing_command_or_player"), "application/json");
+            return;
+        }
+
+        std::string body = BotAgentTaskQueue::RunSync(
+            [guid, playerGuid, command]() -> std::string
+            {
+                if (command == "come")   return BotAgentMoveAction::Come(guid, playerGuid);
+                if (command == "follow") return BotAgentMoveAction::Follow(guid, playerGuid);
+                if (command == "stay")   return BotAgentMoveAction::Stay(guid, playerGuid);
+                return BotAgentJson::Error("unknown_command");
+            },
             BUY_START_TIMEOUT_MS);
         res.set_content(body, "application/json");
     });

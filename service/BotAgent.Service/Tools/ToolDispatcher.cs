@@ -96,6 +96,17 @@ public sealed class ToolDispatcher
                 return repairResult;
             }
 
+            case "move_companion":
+            {
+                string? action = GetString(call.Arguments, "action");
+                if (action is not ("come" or "follow" or "stay"))
+                    return Err("'action' must be one of: come, follow, stay");
+
+                var body = new JsonObject { ["command"] = action, ["player_guid"] = req.PlayerGuid };
+                // Takes effect immediately; no async callback to correlate.
+                return await _module.MoveAsync(bot.Guid, body.ToJsonString(), ct);
+            }
+
             default:
                 return Err($"unknown tool '{call.Name}'");
         }

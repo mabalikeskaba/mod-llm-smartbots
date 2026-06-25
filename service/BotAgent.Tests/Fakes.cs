@@ -75,12 +75,23 @@ internal sealed class FakeModuleClient : IModuleClient
     }
 
     public uint? LastRepairGuid;
+    public uint? LastMoveGuid;
+    public string? LastMoveBody;
+    public string MoveResult = "{\"ok\":true}";
 
     public Task<string> RepairAsync(uint guid, string jsonBody, CancellationToken ct)
     {
         LastRepairGuid = guid;
         Calls.Add($"repair:{guid}");
         return Task.FromResult(RepairResult);
+    }
+
+    public Task<string> MoveAsync(uint guid, string jsonBody, CancellationToken ct)
+    {
+        LastMoveGuid = guid;
+        LastMoveBody = jsonBody;
+        Calls.Add($"move:{guid}");
+        return Task.FromResult(MoveResult);
     }
 
     public Task<string> SendChatAsync(string groupGuid, string text, CancellationToken ct)

@@ -129,6 +129,39 @@ public class BuyRegistersPendingTests
         Assert.True(pending.TryTake("rp1", out PendingAction a));
         Assert.Equal("repair", a.Kind);
     }
+
+    [Fact]
+    public async Task Move_passes_action_and_player_guid_without_pending()
+    {
+        var module = new FakeModuleClient();
+        var pending = new PendingActions();
+        var dispatcher = new ToolDispatcher(module, pending);
+        IncomingRequest req = Build.Request(Build.Member("Thrall", 42));
+
+        await dispatcher.DispatchAsync(
+            Build.Call("move_companion", "{\"bot_name\":\"Thrall\",\"action\":\"come\"}"),
+            req, CancellationToken.None);
+
+        Assert.Equal(42u, module.LastMoveGuid);
+        Assert.Contains("\"command\":\"come\"", module.LastMoveBody);
+        Assert.Contains("\"player_guid\":1", module.LastMoveBody);
+        Assert.Equal(0, pending.Count); // movement has no async callback
+    }
+
+    [Fact]
+    public async Task Move_rejects_unknown_action()
+    {
+        var module = new FakeModuleClient();
+        var dispatcher = new ToolDispatcher(module, new PendingActions());
+        IncomingRequest req = Build.Request(Build.Member("Thrall", 42));
+
+        string result = await dispatcher.DispatchAsync(
+            Build.Call("move_companion", "{\"bot_name\":\"Thrall\",\"action\":\"dance\"}"),
+            req, CancellationToken.None);
+
+        Assert.Contains("error", result);
+        Assert.Null(module.LastMoveGuid);
+    }
 }
 
 public class ActionResultAckTests
