@@ -16,7 +16,10 @@
 
 TRUNCATE TABLE `bot_agent_item_vendors`;
 
-INSERT INTO `bot_agent_item_vendors`
+-- INSERT IGNORE: npc_vendor may list the same item for a vendor more than once
+-- (e.g. distinct ExtendedCost rows), which would collide on the
+-- (item_entry, vendor_spawn_guid) primary key. We only need one row per pair.
+INSERT IGNORE INTO `bot_agent_item_vendors`
     (`item_entry`, `vendor_entry`, `vendor_spawn_guid`, `map`,
      `position_x`, `position_y`, `position_z`, `faction`)
 SELECT
