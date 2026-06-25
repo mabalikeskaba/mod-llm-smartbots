@@ -112,6 +112,23 @@ public class BuyRegistersPendingTests
         Assert.True(pending.TryTake("t1", out PendingAction a));
         Assert.Equal("give", a.Kind);
     }
+
+    [Fact]
+    public async Task Repair_calls_module_and_registers_pending_as_repair()
+    {
+        var module = new FakeModuleClient();
+        var pending = new PendingActions();
+        var dispatcher = new ToolDispatcher(module, pending);
+        IncomingRequest req = Build.Request(Build.Member("Thrall", 42));
+
+        await dispatcher.DispatchAsync(
+            Build.Call("repair_equipment", "{\"bot_name\":\"Thrall\"}"),
+            req, CancellationToken.None);
+
+        Assert.Equal(42u, module.LastRepairGuid);
+        Assert.True(pending.TryTake("rp1", out PendingAction a));
+        Assert.Equal("repair", a.Kind);
+    }
 }
 
 public class ActionResultAckTests

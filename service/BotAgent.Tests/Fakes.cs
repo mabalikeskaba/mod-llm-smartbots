@@ -30,6 +30,7 @@ internal sealed class FakeModuleClient : IModuleClient
     public string BuyResult = "{\"accepted\":true,\"request_id\":\"r1\"}";
     public string SellResult = "{\"accepted\":true,\"request_id\":\"s1\"}";
     public string TradeResult = "{\"accepted\":true,\"request_id\":\"t1\"}";
+    public string RepairResult = "{\"accepted\":true,\"request_id\":\"rp1\"}";
 
     public Task<string> GetGoldAsync(uint guid, CancellationToken ct)
     {
@@ -71,6 +72,15 @@ internal sealed class FakeModuleClient : IModuleClient
         LastTradeBody = jsonBody;
         Calls.Add($"trade:{guid}");
         return Task.FromResult(TradeResult);
+    }
+
+    public uint? LastRepairGuid;
+
+    public Task<string> RepairAsync(uint guid, string jsonBody, CancellationToken ct)
+    {
+        LastRepairGuid = guid;
+        Calls.Add($"repair:{guid}");
+        return Task.FromResult(RepairResult);
     }
 
     public Task<string> SendChatAsync(string groupGuid, string text, CancellationToken ct)

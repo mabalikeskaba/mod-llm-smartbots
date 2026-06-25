@@ -41,6 +41,11 @@ public sealed class ToolCatalog
                 "items in the trade window and accepts its side; the player confirms on their " +
                 "client to finish. Returns immediately; completes asynchronously.",
                 GiveSchema),
+            Define("repair_equipment",
+                "Send a companion to the nearest repair NPC on their map and repair all worn " +
+                "and carried gear. Returns immediately; completes asynchronously with a " +
+                "follow-up acknowledgement that includes the repair cost.",
+                BotOnlySchema),
         };
     }
 

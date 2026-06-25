@@ -75,9 +75,10 @@ public sealed class AgentOrchestrator
     {
         string errand = ctx.Kind switch
         {
-            "sell" => "selling items at a vendor to free bag space",
-            "give" => "handing items to the player through a trade",
-            _      => "a shopping errand",
+            "sell"   => "selling items at a vendor to free bag space",
+            "give"   => "handing items to the player through a trade",
+            "repair" => "repairing the companion's gear at a repair NPC",
+            _        => "a shopping errand",
         };
 
         string system =
@@ -100,6 +101,12 @@ public sealed class AgentOrchestrator
                     ? "The trade window is open with the items in it; the player just needs to confirm it. "
                     : "Handing the items over failed. ");
                 sb.Append($"Items: {ctx.ItemName}. ");
+                break;
+
+            case "repair":
+                sb.Append(result.Success ? "The gear was repaired. " : "Repair failed. ");
+                if (result.Price is > 0) sb.Append($"Cost: {Money.Format(result.Price.Value)}. ");
+                if (!string.IsNullOrEmpty(result.Vendor)) sb.Append($"Repaired at: {result.Vendor}. ");
                 break;
 
             default: // buy
@@ -129,7 +136,8 @@ public sealed class AgentOrchestrator
         sb.Append("You operate a player's companion bots in World of Warcraft. ");
         sb.Append("Use the provided tools to read live bot data (gold, level, inventory) ");
         sb.Append("and to perform actions: buying an item from a vendor, selling items at a ");
-        sb.Append("vendor to free bag space, and giving carried items to the player via trade. ");
+        sb.Append("vendor to free bag space, giving carried items to the player via trade, ");
+        sb.Append("and repairing the companion's gear at a repair NPC. ");
         sb.Append("To free bag space, call get_inventory first, decide which items are no longer ");
         sb.Append("needed, then sell them. To hand items to the player, use give_items_to_player. ");
         sb.Append("Only act on the companion the player refers to; pick names from the roster. ");

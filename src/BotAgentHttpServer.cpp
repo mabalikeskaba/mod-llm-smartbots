@@ -4,6 +4,7 @@
 #include "BotAgentConfig.h"
 #include "BotAgentJson.h"
 #include "BotAgentReads.h"
+#include "BotAgentRepairAction.h"
 #include "BotAgentSellAction.h"
 #include "BotAgentTaskQueue.h"
 #include "BotAgentTradeAction.h"
@@ -197,6 +198,28 @@ void BotAgentHttpServer::RegisterRoutes()
 
         std::string body = BotAgentTaskQueue::RunSync(
             [guid, items, radius]() { return BotAgentSellAction::Start(guid, items, radius); },
+            BUY_START_TIMEOUT_MS);
+        res.set_content(body, "application/json");
+    });
+
+    // POST /bot/<guid>/repair  { "radius": <optional int> }
+    _server->Post(R"(/bot/(\d+)/repair)", [](httplib::Request const& req, httplib::Response& res)
+    {
+        if (!RequireToken(req, res))
+            return;
+
+        uint32 guid = ParseGuid(req.matches[1].str());
+        if (!guid)
+        {
+            res.status = 400;
+            res.set_content(BotAgentJson::Error("invalid_guid"), "application/json");
+            return;
+        }
+
+        uint32 radius = BotAgentJson::GetUInt(req.body, "radius", 0);
+
+        std::string body = BotAgentTaskQueue::RunSync(
+            [guid, radius]() { return BotAgentRepairAction::Start(guid, radius); },
             BUY_START_TIMEOUT_MS);
         res.set_content(body, "application/json");
     });

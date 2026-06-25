@@ -89,6 +89,13 @@ public sealed class ToolDispatcher
                 return giveResult;
             }
 
+            case "repair_equipment":
+            {
+                string repairResult = await _module.RepairAsync(bot.Guid, "{}", ct);
+                RegisterPendingIfAccepted(repairResult, req, bot.Name, "", "repair");
+                return repairResult;
+            }
+
             default:
                 return Err($"unknown tool '{call.Name}'");
         }

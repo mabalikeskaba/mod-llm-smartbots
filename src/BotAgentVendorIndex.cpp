@@ -52,23 +52,23 @@ namespace BotAgentVendorIndex
         return out;
     }
 
-    std::vector<VendorCandidate> FindNearestAnyVendor(
+    std::vector<VendorCandidate> FindNearestNpcWithFlag(
         uint16 map, float x, float y, float z,
-        uint32 maxDistYards, uint32 limit)
+        uint32 npcFlagMask, uint32 maxDistYards, uint32 limit)
     {
         std::vector<VendorCandidate> out;
 
-        // 0x80 == UNIT_NPC_FLAG_VENDOR. Any vendor buys items, so we only need
-        // the nearest vendor-flagged spawn on the bot's map.
+        // Match spawns whose template carries all requested npcflag bits
+        // (0x80 = UNIT_NPC_FLAG_VENDOR, 0x1000 = UNIT_NPC_FLAG_REPAIR).
         QueryResult result = WorldDatabase.Query(
             "SELECT c.id1, c.guid, c.position_x, c.position_y, c.position_z, ct.faction "
             "FROM creature c JOIN creature_template ct ON ct.entry = c.id1 "
-            "WHERE c.map = {} AND (ct.npcflag & 0x80) <> 0 "
+            "WHERE c.map = {} AND (ct.npcflag & {}) = {} "
             "ORDER BY ((c.position_x-{})*(c.position_x-{})"
             "+(c.position_y-{})*(c.position_y-{})"
             "+(c.position_z-{})*(c.position_z-{})) ASC "
             "LIMIT {}",
-            map, x, x, y, y, z, z, limit);
+            map, npcFlagMask, npcFlagMask, x, x, y, y, z, z, limit);
 
         if (!result)
             return out;
@@ -94,5 +94,12 @@ namespace BotAgentVendorIndex
         while (result->NextRow());
 
         return out;
+    }
+
+    std::vector<VendorCandidate> FindNearestAnyVendor(
+        uint16 map, float x, float y, float z,
+        uint32 maxDistYards, uint32 limit)
+    {
+        return FindNearestNpcWithFlag(map, x, y, z, 0x80, maxDistYards, limit);
     }
 }

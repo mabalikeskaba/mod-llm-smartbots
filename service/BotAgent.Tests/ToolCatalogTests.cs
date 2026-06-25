@@ -18,6 +18,7 @@ public class ToolCatalogTests
             {
                 "get_gold", "get_level", "get_inventory",
                 "buy_item_from_vendor", "sell_items_to_vendor", "give_items_to_player",
+                "repair_equipment",
             },
             names);
     }
