@@ -26,7 +26,7 @@ using namespace BotAgentActionCommon;
 namespace
 {
     constexpr uint32 MOVE_POINT_ID   = 0x71AD;  // "TrAD"
-    constexpr float  TRADE_DISTANCE  = 5.0f;    // comfortably inside trade range
+    constexpr float  TRADE_REACH  = 5.0f;    // comfortably inside trade range
     constexpr float  REPATH_DISTANCE = 3.0f;    // re-path if the player drifts this far
 
     enum class TradeState { Travel, Trade };
@@ -202,7 +202,7 @@ void BotAgentTradeAction::Tick(uint32 diffMs)
         if (a.state == TradeState::Travel)
         {
             float dist = bot->GetExactDist(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ());
-            if (dist <= TRADE_DISTANCE)
+            if (dist <= TRADE_REACH)
             {
                 a.state = TradeState::Trade;
                 ++i;
