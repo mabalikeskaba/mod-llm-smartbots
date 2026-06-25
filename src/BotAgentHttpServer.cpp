@@ -4,7 +4,9 @@
 #include "BotAgentConfig.h"
 #include "BotAgentJson.h"
 #include "BotAgentReads.h"
+#include "BotAgentSellAction.h"
 #include "BotAgentTaskQueue.h"
+#include "BotAgentTradeAction.h"
 #include "Log.h"
 
 // Single-header HTTP library (vendored under module/deps).
@@ -166,6 +168,65 @@ void BotAgentHttpServer::RegisterRoutes()
 
         std::string body = BotAgentTaskQueue::RunSync(
             [guid, itemName, radius]() { return BotAgentBuyAction::Start(guid, itemName, radius); },
+            BUY_START_TIMEOUT_MS);
+        res.set_content(body, "application/json");
+    });
+
+    // POST /bot/<guid>/sell  { "items": "Name1|Name2", "radius": <optional int> }
+    _server->Post(R"(/bot/(\d+)/sell)", [](httplib::Request const& req, httplib::Response& res)
+    {
+        if (!RequireToken(req, res))
+            return;
+
+        uint32 guid = ParseGuid(req.matches[1].str());
+        if (!guid)
+        {
+            res.status = 400;
+            res.set_content(BotAgentJson::Error("invalid_guid"), "application/json");
+            return;
+        }
+
+        std::string items;
+        if (!BotAgentJson::GetString(req.body, "items", items) || items.empty())
+        {
+            res.status = 400;
+            res.set_content(BotAgentJson::Error("missing_items"), "application/json");
+            return;
+        }
+        uint32 radius = BotAgentJson::GetUInt(req.body, "radius", 0);
+
+        std::string body = BotAgentTaskQueue::RunSync(
+            [guid, items, radius]() { return BotAgentSellAction::Start(guid, items, radius); },
+            BUY_START_TIMEOUT_MS);
+        res.set_content(body, "application/json");
+    });
+
+    // POST /bot/<guid>/trade  { "player_guid": <int>, "items": "Name1|Name2" }
+    _server->Post(R"(/bot/(\d+)/trade)", [](httplib::Request const& req, httplib::Response& res)
+    {
+        if (!RequireToken(req, res))
+            return;
+
+        uint32 guid = ParseGuid(req.matches[1].str());
+        if (!guid)
+        {
+            res.status = 400;
+            res.set_content(BotAgentJson::Error("invalid_guid"), "application/json");
+            return;
+        }
+
+        uint32 playerGuid = BotAgentJson::GetUInt(req.body, "player_guid", 0);
+        std::string items;
+        BotAgentJson::GetString(req.body, "items", items);
+        if (!playerGuid || items.empty())
+        {
+            res.status = 400;
+            res.set_content(BotAgentJson::Error("missing_player_or_items"), "application/json");
+            return;
+        }
+
+        std::string body = BotAgentTaskQueue::RunSync(
+            [guid, playerGuid, items]() { return BotAgentTradeAction::Start(guid, playerGuid, items); },
             BUY_START_TIMEOUT_MS);
         res.set_content(body, "application/json");
     });

@@ -73,17 +73,43 @@ public sealed class AgentOrchestrator
     // natural-language sentence from the companion's point of view.
     public async Task CompleteActionAsync(ActionResult result, PendingAction ctx, CancellationToken ct)
     {
+        string errand = ctx.Kind switch
+        {
+            "sell" => "selling items at a vendor to free bag space",
+            "give" => "handing items to the player through a trade",
+            _      => "a shopping errand",
+        };
+
         string system =
             $"You are {ctx.BotName}, a companion of {ctx.Player} in World of Warcraft. " +
-            "Reply with ONE short, natural, in-character sentence acknowledging the result of a " +
-            "shopping errand. No markdown, no quotes.";
+            $"Reply with ONE short, natural, in-character sentence acknowledging the result of " +
+            $"{errand}. No markdown, no quotes. " + LanguageInstruction();
 
         var sb = new StringBuilder();
-        sb.Append(result.Success ? "The purchase succeeded. " : "The purchase failed. ");
-        sb.Append($"Requested item: {ctx.ItemName}. ");
-        if (!string.IsNullOrEmpty(result.Item)) sb.Append($"Bought: {result.Item}. ");
-        if (result.Price is > 0) sb.Append($"Price: {Money.Format(result.Price.Value)}. ");
-        if (!string.IsNullOrEmpty(result.Vendor)) sb.Append($"Vendor: {result.Vendor}. ");
+        switch (ctx.Kind)
+        {
+            case "sell":
+                sb.Append(result.Success ? "The items were sold. " : "Selling failed. ");
+                sb.Append($"Items: {ctx.ItemName}. ");
+                if (result.Price is > 0) sb.Append($"Earned: {Money.Format(result.Price.Value)}. ");
+                if (!string.IsNullOrEmpty(result.Vendor)) sb.Append($"Vendor: {result.Vendor}. ");
+                break;
+
+            case "give":
+                sb.Append(result.Success
+                    ? "The trade window is open with the items in it; the player just needs to confirm it. "
+                    : "Handing the items over failed. ");
+                sb.Append($"Items: {ctx.ItemName}. ");
+                break;
+
+            default: // buy
+                sb.Append(result.Success ? "The purchase succeeded. " : "The purchase failed. ");
+                sb.Append($"Requested item: {ctx.ItemName}. ");
+                if (!string.IsNullOrEmpty(result.Item)) sb.Append($"Bought: {result.Item}. ");
+                if (result.Price is > 0) sb.Append($"Price: {Money.Format(result.Price.Value)}. ");
+                if (!string.IsNullOrEmpty(result.Vendor)) sb.Append($"Vendor: {result.Vendor}. ");
+                break;
+        }
         if (!string.IsNullOrEmpty(result.Message)) sb.Append($"Detail: {result.Message}. ");
         sb.Append($"Tell {ctx.Player} the outcome.");
 
@@ -97,16 +123,21 @@ public sealed class AgentOrchestrator
             _log.LogWarning("no completion ack text for request {Id}", result.RequestId);
     }
 
-    private static string BuildSystemPrompt(IncomingRequest req)
+    private string BuildSystemPrompt(IncomingRequest req)
     {
         var sb = new StringBuilder();
         sb.Append("You operate a player's companion bots in World of Warcraft. ");
         sb.Append("Use the provided tools to read live bot data (gold, level, inventory) ");
-        sb.Append("and to perform actions (buying an item from a vendor). ");
+        sb.Append("and to perform actions: buying an item from a vendor, selling items at a ");
+        sb.Append("vendor to free bag space, and giving carried items to the player via trade. ");
+        sb.Append("To free bag space, call get_inventory first, decide which items are no longer ");
+        sb.Append("needed, then sell them. To hand items to the player, use give_items_to_player. ");
         sb.Append("Only act on the companion the player refers to; pick names from the roster. ");
         sb.Append("After using tools, reply with a SHORT, natural, in-character acknowledgement ");
         sb.Append("that answers the player — one or two sentences, no markdown, no quotes. ");
-        sb.Append("If a tool returns an error, acknowledge the problem plainly.\n\n");
+        sb.Append("If a tool returns an error, acknowledge the problem plainly. ");
+        sb.Append(LanguageInstruction());
+        sb.Append("\n\n");
 
         sb.Append($"Player: {req.Player}\n");
         sb.Append("Companions in the group:\n");
@@ -120,5 +151,16 @@ public sealed class AgentOrchestrator
                 sb.Append($"  - {m.Name} (level {m.Level})\n");
         }
         return sb.ToString();
+    }
+
+    // Reply-language directive: a configured language pins the output language;
+    // otherwise the bot mirrors whatever language the player wrote in. Item
+    // names are always looked up in English by the tools regardless.
+    private string LanguageInstruction()
+    {
+        string lang = _opt.Language?.Trim() ?? "";
+        return lang.Length > 0
+            ? $"Always write your reply to the player in {lang}, regardless of the language they used. "
+            : "Write your reply in the same language the player used. ";
     }
 }

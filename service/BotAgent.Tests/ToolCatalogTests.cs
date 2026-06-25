@@ -14,7 +14,11 @@ public class ToolCatalogTests
         var names = catalog.Tools.Select(t => t.Name).ToHashSet();
 
         Assert.Equal(
-            new HashSet<string> { "get_gold", "get_level", "get_inventory", "buy_item_from_vendor" },
+            new HashSet<string>
+            {
+                "get_gold", "get_level", "get_inventory",
+                "buy_item_from_vendor", "sell_items_to_vendor", "give_items_to_player",
+            },
             names);
     }
 

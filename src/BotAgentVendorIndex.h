@@ -28,6 +28,14 @@ namespace BotAgentVendorIndex
         uint32 itemEntry, uint16 map,
         float x, float y, float z,
         uint32 maxDistYards, uint32 limit = 25);
+
+    // Any vendor-flagged creature spawn on `map`, nearest-first to (x,y,z).
+    // Used by the sell action, where the bot just needs *a* vendor (any vendor
+    // buys items) rather than one stocking a specific item. Live query against
+    // creature + creature_template (vendorEntry == creature.id1). Pure DB read.
+    std::vector<VendorCandidate> FindNearestAnyVendor(
+        uint16 map, float x, float y, float z,
+        uint32 maxDistYards, uint32 limit = 25);
 }
 
 #endif // MOD_BOT_AGENT_VENDOR_INDEX_H

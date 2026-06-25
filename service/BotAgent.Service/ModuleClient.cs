@@ -19,6 +19,8 @@ public interface IModuleClient
     Task<string> GetLevelAsync(uint guid, CancellationToken ct);
     Task<string> GetInventoryAsync(uint guid, CancellationToken ct);
     Task<string> BuyAsync(uint guid, string jsonBody, CancellationToken ct);
+    Task<string> SellAsync(uint guid, string jsonBody, CancellationToken ct);
+    Task<string> TradeAsync(uint guid, string jsonBody, CancellationToken ct);
     Task<string> SendChatAsync(string groupGuid, string text, CancellationToken ct);
 }
 
@@ -43,6 +45,12 @@ public sealed class ModuleClient : IModuleClient
 
     public Task<string> BuyAsync(uint guid, string jsonBody, CancellationToken ct) =>
         PostAsync($"/bot/{guid}/buy", jsonBody, ct);
+
+    public Task<string> SellAsync(uint guid, string jsonBody, CancellationToken ct) =>
+        PostAsync($"/bot/{guid}/sell", jsonBody, ct);
+
+    public Task<string> TradeAsync(uint guid, string jsonBody, CancellationToken ct) =>
+        PostAsync($"/bot/{guid}/trade", jsonBody, ct);
 
     public Task<string> SendChatAsync(string groupGuid, string text, CancellationToken ct)
     {

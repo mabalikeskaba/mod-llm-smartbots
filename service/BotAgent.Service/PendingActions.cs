@@ -9,7 +9,8 @@ public sealed record PendingAction(
     string GroupGuid,
     string Player,
     string BotName,
-    string ItemName);
+    string ItemName,
+    string Kind = "buy"); // "buy" | "sell" | "give" — picks the completion phrasing
 
 // In-memory correlation store for in-flight async actions (e.g. a vendor run).
 public sealed class PendingActions

@@ -19,10 +19,17 @@ internal sealed class FakeModuleClient : IModuleClient
     public string? LastChatGroup;
     public string? LastChatText;
 
+    public uint? LastSellGuid;
+    public string? LastSellBody;
+    public uint? LastTradeGuid;
+    public string? LastTradeBody;
+
     public string GoldResult = "{\"copper\":0}";
     public string LevelResult = "{\"level\":1}";
     public string InventoryResult = "{\"items\":[]}";
     public string BuyResult = "{\"accepted\":true,\"request_id\":\"r1\"}";
+    public string SellResult = "{\"accepted\":true,\"request_id\":\"s1\"}";
+    public string TradeResult = "{\"accepted\":true,\"request_id\":\"t1\"}";
 
     public Task<string> GetGoldAsync(uint guid, CancellationToken ct)
     {
@@ -48,6 +55,22 @@ internal sealed class FakeModuleClient : IModuleClient
         LastBuyBody = jsonBody;
         Calls.Add($"buy:{guid}");
         return Task.FromResult(BuyResult);
+    }
+
+    public Task<string> SellAsync(uint guid, string jsonBody, CancellationToken ct)
+    {
+        LastSellGuid = guid;
+        LastSellBody = jsonBody;
+        Calls.Add($"sell:{guid}");
+        return Task.FromResult(SellResult);
+    }
+
+    public Task<string> TradeAsync(uint guid, string jsonBody, CancellationToken ct)
+    {
+        LastTradeGuid = guid;
+        LastTradeBody = jsonBody;
+        Calls.Add($"trade:{guid}");
+        return Task.FromResult(TradeResult);
     }
 
     public Task<string> SendChatAsync(string groupGuid, string text, CancellationToken ct)

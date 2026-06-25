@@ -3,7 +3,9 @@
 #include "BotAgentConfig.h"
 #include "BotAgentHttpClient.h"
 #include "BotAgentHttpServer.h"
+#include "BotAgentSellAction.h"
 #include "BotAgentTaskQueue.h"
+#include "BotAgentTradeAction.h"
 #include "Log.h"
 
 BotAgentWorldScript::BotAgentWorldScript()
@@ -55,6 +57,8 @@ void BotAgentWorldScript::OnUpdate(uint32 diff)
     // Run everything the HTTP threads queued for the world thread.
     BotAgentTaskQueue::Instance().DrainOnWorldThread();
 
-    // Advance in-flight async actions (vendor runs).
+    // Advance in-flight async actions (vendor runs, sells, trades).
     BotAgentBuyAction::Tick(diff);
+    BotAgentSellAction::Tick(diff);
+    BotAgentTradeAction::Tick(diff);
 }

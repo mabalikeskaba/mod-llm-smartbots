@@ -72,6 +72,46 @@ public class BuyRegistersPendingTests
 
         Assert.Equal(0, pending.Count);
     }
+
+    [Fact]
+    public async Task Sell_joins_item_names_and_registers_pending_as_sell()
+    {
+        var module = new FakeModuleClient();
+        var pending = new PendingActions();
+        var dispatcher = new ToolDispatcher(module, pending);
+        IncomingRequest req = Build.Request(Build.Member("Thrall", 42));
+
+        await dispatcher.DispatchAsync(
+            Build.Call("sell_items_to_vendor",
+                "{\"bot_name\":\"Thrall\",\"item_names\":[\"Broken Fang\",\"Tattered Cloth\"]}"),
+            req, CancellationToken.None);
+
+        Assert.Equal(42u, module.LastSellGuid);
+        Assert.Contains("Broken Fang|Tattered Cloth", module.LastSellBody);
+        Assert.True(pending.TryTake("s1", out PendingAction a));
+        Assert.Equal("sell", a.Kind);
+        Assert.Equal("Broken Fang, Tattered Cloth", a.ItemName);
+    }
+
+    [Fact]
+    public async Task Give_passes_player_guid_and_registers_pending_as_give()
+    {
+        var module = new FakeModuleClient();
+        var pending = new PendingActions();
+        var dispatcher = new ToolDispatcher(module, pending);
+        IncomingRequest req = Build.Request(Build.Member("Thrall", 42));
+
+        await dispatcher.DispatchAsync(
+            Build.Call("give_items_to_player",
+                "{\"bot_name\":\"Thrall\",\"item_names\":[\"Mild Spices\"]}"),
+            req, CancellationToken.None);
+
+        Assert.Equal(42u, module.LastTradeGuid);
+        Assert.Contains("\"player_guid\":1", module.LastTradeBody);
+        Assert.Contains("Mild Spices", module.LastTradeBody);
+        Assert.True(pending.TryTake("t1", out PendingAction a));
+        Assert.Equal("give", a.Kind);
+    }
 }
 
 public class ActionResultAckTests
