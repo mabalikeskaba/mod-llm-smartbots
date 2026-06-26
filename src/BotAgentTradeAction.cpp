@@ -29,7 +29,13 @@ namespace
     constexpr float  TRADE_REACH  = 5.0f;    // comfortably inside trade range
     constexpr float  REPATH_DISTANCE = 3.0f;    // re-path if the player drifts this far
 
-    enum class TradeState { Travel, Trade };
+    // After the bot sends the trade request, the player's client needs a moment
+    // to open its trade window before it can render the items we offer. Placing
+    // items in the same tick as the request pushes an update to a window that is
+    // not open yet, so the player sees an empty trade. Wait this long in between.
+    constexpr uint32 PLACE_DELAY_MS  = 1200;
+
+    enum class TradeState { Travel, Initiate, Place };
 
     struct ActiveTrade
     {
@@ -43,6 +49,7 @@ namespace
         TradeState                  state      = TradeState::Travel;
         uint32                      elapsedMs  = 0;
         uint32                      timeoutMs  = 120000;
+        uint32                      placeDelayMs = 0;          // time waited in Place
     };
 
     std::vector<ActiveTrade>    g_active;
@@ -204,7 +211,7 @@ void BotAgentTradeAction::Tick(uint32 diffMs)
             float dist = bot->GetExactDist(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ());
             if (dist <= TRADE_REACH)
             {
-                a.state = TradeState::Trade;
+                a.state = TradeState::Initiate;
                 ++i;
                 continue;
             }
@@ -228,17 +235,46 @@ void BotAgentTradeAction::Tick(uint32 diffMs)
             continue;
         }
 
-        // --- TradeState::Trade ------------------------------------------------
-        // Open the trade with the player, place the items, and accept the bot's
-        // side. The player confirms on their client to finish the exchange.
-        WorldPacket initiate(CMSG_INITIATE_TRADE);
-        initiate << target->GetGUID();
-        bot->GetSession()->HandleInitiateTradeOpcode(initiate);
+        // --- TradeState::Initiate ---------------------------------------------
+        // Send the trade request, then hand off to Place. We must NOT put items
+        // in the same tick: the player's client has not opened its trade window
+        // yet, so an item update now would be sent to a closed window and lost.
+        if (a.state == TradeState::Initiate)
+        {
+            bot->SetFacingToObject(target);
 
+            WorldPacket initiate(CMSG_INITIATE_TRADE);
+            initiate << target->GetGUID();
+            bot->GetSession()->HandleInitiateTradeOpcode(initiate);
+
+            if (!bot->GetTradeData())
+            {
+                Finalize(a, bot, botAI, false, "trade_init_failed");
+                g_active.erase(g_active.begin() + i);
+                continue;
+            }
+
+            a.placeDelayMs = 0;
+            a.state = TradeState::Place;
+            ++i;
+            continue;
+        }
+
+        // --- TradeState::Place ------------------------------------------------
+        // The player may have closed/declined the request while we waited.
         if (!bot->GetTradeData())
         {
-            Finalize(a, bot, botAI, false, "trade_init_failed");
+            Finalize(a, bot, botAI, false, "player_declined");
             g_active.erase(g_active.begin() + i);
+            continue;
+        }
+
+        // Give the player's client time to open its trade window before we push
+        // the items into it.
+        a.placeDelayMs += diffMs;
+        if (a.placeDelayMs < PLACE_DELAY_MS)
+        {
+            ++i;
             continue;
         }
 
